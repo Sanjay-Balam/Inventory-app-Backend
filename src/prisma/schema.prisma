@@ -136,4 +136,43 @@ model Customer {
   created_at   DateTime @default(now())
   
   orders       Order[] @relation("CustomerOrders")
+  credit_balance Decimal  @default(0)
+  credit_limit   Decimal  @default(0)
+  
+  credit_transactions CustomerCreditTransaction[]
+}
+
+model Vendor {
+  vendor_id     Int      @id @default(autoincrement())
+  name          String
+  email         String?  @unique
+  phone         String   @unique
+  address       String?
+  balance       Decimal  @default(0)
+  created_at    DateTime @default(now())
+  
+  transactions  VendorTransaction[]
+  products      Product[]
+}
+
+model VendorTransaction {
+  transaction_id  Int      @id @default(autoincrement())
+  vendor_id      Int
+  amount         Decimal
+  type           String   // PAYMENT or PURCHASE
+  description    String?
+  created_at     DateTime @default(now())
+  
+  vendor         Vendor   @relation(fields: [vendor_id], references: [vendor_id])
+}
+
+model CustomerCreditTransaction {
+  transaction_id  Int      @id @default(autoincrement())
+  customer_id    Int
+  amount         Decimal
+  type           String   // CREDIT or PAYMENT
+  description    String?
+  created_at     DateTime @default(now())
+  
+  customer       Customer @relation(fields: [customer_id], references: [customer_id])
 }

@@ -3,72 +3,168 @@ import prisma from '../config/db';
 
 const router = Router();
 
-// Create order
-router.post('/create', async (req, res) => {
-    const { customer_phone, channel_id, items } = req.body;
-    
+// Get all orders
+router.get('/', async (req, res) => {
     try {
-        // First find/create customer
-        const customer = await prisma.customer.upsert({
-            where: { phone: customer_phone },
-            update: {},
-            create: { phone: customer_phone, name: "New Customer" }
-        });
-
-        const order = await prisma.$transaction(async (tx) => {
-            // Calculate total and check stock
-            let total = 0;
-            const orderItems = [];
-            
-            for (const item of items) {
-                const product = await tx.product.findUnique({
-                    where: { product_id: item.product_id },
-                    include: { inventory: { where: { channel_id } } }
-                });
-
-                if (!product) throw new Error(`Product ${item.product_id} not found`);
-                if (!product.inventory[0] || product.inventory[0].stock < item.quantity) {
-                    throw new Error(`Insufficient stock for product ${product.name}`);
+        const orders = await prisma.order.findMany({
+            include: {
+                customer: true,
+                channel: true,
+                orderItems: {
+                    include: {
+                        product: true
+                    }
                 }
-
-                total += product.price.toNumber() * item.quantity;
-                orderItems.push({
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                    price: product.price
-                });
-
-                await tx.inventory.update({
-                    where: { inventory_id: product.inventory[0].inventory_id },
-                    data: { stock: { decrement: item.quantity } }
-                });
             }
+        });
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch orders' });
+    }
+});
 
-            // Create order
-            return await tx.order.create({
+// Get order details
+router.get('/:id', async (req, res) => {
+    try {
+        const order = await prisma.order.findUnique({
+            where: { order_id: parseInt(req.params.id) },
+            include: {
+                customer: true,
+                channel: true,
+                orderItems: {
+                    include: {
+                        product: true
+                    }
+                }
+            }
+        });
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        res.json(order);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch order' });
+    }
+});
+
+// Create new order
+router.post('/create', async (req, res) => {
+    try {
+        const { customer_id, channel_id, items, user_id } = req.body;
+
+        // Calculate total amount
+        let total_amount = 0;
+        for (const item of items) {
+            const product = await prisma.product.findUnique({
+                where: { product_id: item.product_id }
+            });
+            if (!product) {
+                return res.status(404).json({ error: `Product ${item.product_id} not found` });
+            }
+            total_amount += product.price * item.quantity;
+        }
+
+        // Create order with items in a transaction
+        const order = await prisma.$transaction(async (prisma) => {
+            // Create the order
+            const newOrder = await prisma.order.create({
                 data: {
-                    customer: { connect: { customer_id: customer.customer_id } },
-                    channel: { connect: { channel_id } },
-                    //@ts-ignore
-                    user: { connect: { user_id: req.user.user_id } },
-                    total_amount: total,
-                    orderItems: { create: orderItems },
-                    transactions: {
-                        create: orderItems.map(item => ({
-                            product: { connect: { product_id: item.product_id } },
-                            channel: { connect: { channel_id } },
-                            transaction_type: 'Sale',
-                            quantity: item.quantity
+                    customer_id: parseInt(customer_id),
+                    channel_id: parseInt(channel_id),
+                    user_id: parseInt(user_id),
+                    total_amount,
+                    orderItems: {
+                        create: items.map(item => ({
+                            product_id: parseInt(item.product_id),
+                            quantity: parseInt(item.quantity),
+                            price: parseFloat(item.price)
                         }))
                     }
                 },
-                include: { orderItems: true }
+                include: {
+                    orderItems: true
+                }
             });
+
+            // Update inventory for each item
+            for (const item of items) {
+                await prisma.inventory.updateMany({
+                    where: { 
+                        product_id: parseInt(item.product_id),
+                        channel_id: parseInt(channel_id)
+                    },
+                    data: {
+                        stock: {
+                            decrement: parseInt(item.quantity)
+                        }
+                    }
+                });
+            }
+
+            return newOrder;
         });
 
         res.status(201).json(order);
     } catch (error) {
-        res.status(400).json({ error: error instanceof Error ? error.message : 'Order failed' });
+        res.status(500).json({ error: 'Failed to create order' });
+    }
+});
+
+// Update order status
+router.put('/update/:id', async (req, res) => {
+    try {
+        const { order_status } = req.body;
+        const order = await prisma.order.update({
+            where: { order_id: parseInt(req.params.id) },
+            data: { order_status }
+        });
+        res.json(order);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update order' });
+    }
+});
+
+// Cancel order
+router.delete('/cancel/:id', async (req, res) => {
+    try {
+        const orderId = parseInt(req.params.id);
+        
+        await prisma.$transaction(async (prisma) => {
+            // Get order details
+            const order = await prisma.order.findUnique({
+                where: { order_id: orderId },
+                include: { orderItems: true }
+            });
+
+            if (!order) {
+                throw new Error('Order not found');
+            }
+
+            // Restore inventory
+            for (const item of order.orderItems) {
+                await prisma.inventory.updateMany({
+                    where: { 
+                        product_id: item.product_id,
+                        channel_id: order.channel_id
+                    },
+                    data: {
+                        stock: {
+                            increment: item.quantity
+                        }
+                    }
+                });
+            }
+
+            // Update order status
+            await prisma.order.update({
+                where: { order_id: orderId },
+                data: { order_status: 'Cancelled' }
+            });
+        });
+
+        res.json({ message: 'Order cancelled successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to cancel order' });
     }
 });
 

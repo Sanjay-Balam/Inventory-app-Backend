@@ -2,6 +2,8 @@ import express from 'express';
 import inventoryRouter from './routes/inventory';
 import orderRouter from './routes/orders';
 import barcodeRouter from './routes/barcode';
+import vendorRouter from './routes/vendor';
+import customerCreditRouter from './routes/customer-credit';
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/barcode', barcodeRouter);
+app.use('/api/vendors', vendorRouter);
+app.use('/api/customers', customerCreditRouter);
 
 const PORT = process.env.SERVER_PORT || 3000;
 

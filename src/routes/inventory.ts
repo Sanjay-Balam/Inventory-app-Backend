@@ -3,74 +3,88 @@ import prisma from '../config/db';
 
 const router = Router();
 
-// Get low stock alerts
-router.get('/low-stock-alerts', async (req, res) => {
+// Get all products
+router.get('/products', async (req, res) => {
     try {
-        const alerts = await prisma.lowStockAlert.findMany({
-            where: { alert_status: 'Pending' },
-            include: { product: true }
+        const products = await prisma.product.findMany({
+            include: {
+                category: true,
+                inventory: true
+            }
         });
-        
-        res.json(alerts.map(alert => ({
-            product_id: alert.product_id,
-            product_name: alert.product.name,
-            current_stock: alert.current_stock,
-            threshold: alert.threshold
-        })));
+        res.json(products);
     } catch (error) {
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// Get product details
+router.get('/products/:id', async (req, res) => {
+    try {
+        const product = await prisma.product.findUnique({
+            where: { product_id: parseInt(req.params.id) },
+            include: {
+                category: true,
+                inventory: true
+            }
+        });
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch product' });
+    }
+});
+
+// Get inventory details
+router.get('/inventory/:id', async (req, res) => {
+    try {
+        const inventory = await prisma.inventory.findMany({
+            where: { product_id: parseInt(req.params.id) },
+            include: {
+                product: true,
+                channel: true
+            }
+        });
+        res.json(inventory);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch inventory' });
     }
 });
 
 // Update inventory
-// @ts-ignore
-router.post('/update', async (req, res) => {
-    const { product_id, channel_id, stock } = req.body;
-    
+router.post('/inventory/update', async (req, res) => {
     try {
+        const { product_id, channel_id, stock } = req.body;
+
         const inventory = await prisma.inventory.upsert({
             where: {
                 product_id_channel_id: {
-                    product_id,
-                    channel_id
+                    product_id: parseInt(product_id),
+                    channel_id: parseInt(channel_id)
                 }
             },
-            update: { stock },
+            update: {
+                stock: parseInt(stock)
+            },
             create: {
-                product_id,
-                channel_id,
-                stock
+                product_id: parseInt(product_id),
+                channel_id: parseInt(channel_id),
+                stock: parseInt(stock)
             }
         });
 
-        // Check low stock
+        // Check for low stock alert
         const product = await prisma.product.findUnique({
-            where: { product_id },
-            include: { inventory: true }
+            where: { product_id: parseInt(product_id) }
         });
 
-        if (!product) {
-            return res.status(404).json({ error: 'Product not found' });
-        }
-
-        const totalStock = product.inventory.reduce((sum, inv) => sum + inv.stock, 0);
-        if (totalStock < product.low_stock_threshold) {
-            const existingAlerts = await prisma.lowStockAlert.findMany({
-                where: { product_id },
-            });
-
-            // Check if any alert exists
-            const existingAlert = existingAlerts.length > 0 ? existingAlerts[0] : null;
-
-            await prisma.lowStockAlert.upsert({
-                where: { alert_id: existingAlert?.alert_id || -1 },
-                update: { 
-                    current_stock: totalStock,
-                    alert_status: 'Pending'
-                },
-                create: {
-                    product_id,
-                    current_stock: totalStock,
+        if (product && inventory.stock <= product.low_stock_threshold) {
+            await prisma.lowStockAlert.create({
+                data: {
+                    product_id: parseInt(product_id),
+                    current_stock: inventory.stock,
                     threshold: product.low_stock_threshold
                 }
             });
@@ -78,7 +92,27 @@ router.post('/update', async (req, res) => {
 
         res.json(inventory);
     } catch (error) {
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to update inventory' });
+    }
+});
+
+// Get low stock alerts
+router.get('/low-stock-alerts', async (req, res) => {
+    try {
+        const alerts = await prisma.lowStockAlert.findMany({
+            where: {
+                alert_status: 'Pending'
+            },
+            include: {
+                product: true
+            },
+            orderBy: {
+                created_at: 'desc'
+            }
+        });
+        res.json(alerts);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch low stock alerts' });
     }
 });
 
