@@ -46,16 +46,14 @@ model Product {
   cost_price          Decimal
   quantity            Int
   low_stock_threshold Int
-  image_url           String?
-  created_at          DateTime @default(now())
+  image_url        String?
+  created_at       DateTime @default(now())
 
   category        Category        @relation(fields: [category_id], references: [category_id])
   inventory       Inventory[]
   orderItems      OrderItem[]
   transactions    Transactions[]
   lowStockAlerts  LowStockAlert[]
-  Vendor          Vendor?         @relation(fields: [vendorVendor_id], references: [vendor_id])
-  vendorVendor_id Int?
 }
 
 model Inventory {
