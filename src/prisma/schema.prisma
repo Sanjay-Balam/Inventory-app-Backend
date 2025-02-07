@@ -55,12 +55,14 @@ model Product {
   low_stock_threshold Int
   image_url        String?
   created_at       DateTime @default(now())
+  vendor_id        Int?
 
   category        Category @relation(fields: [category_id], references: [category_id])
   inventory       Inventory[]
   orderItems      OrderItem[]
   transactions    Transactions[]
   lowStockAlerts  LowStockAlert[]
+  vendor           Vendor? @relation(fields: [vendor_id], references: [vendor_id])
 }
 
 model Inventory {

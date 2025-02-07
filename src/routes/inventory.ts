@@ -19,6 +19,7 @@ router.get('/products', async (req, res) => {
 });
 
 // Get product details
+// @ts-ignore
 router.get('/products/:id', async (req, res) => {
     try {
         const product = await prisma.product.findUnique({
