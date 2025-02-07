@@ -116,4 +116,26 @@ router.get('/low-stock-alerts', async (req, res) => {
     }
 });
 
+// Add new product
+router.post('/products', async (req, res) => {
+    try {
+        const { name, sku, barcode, price, cost_price, quantity, low_stock_threshold } = req.body;
+
+        const product = await prisma.product.create({
+            data: {
+                name,
+                sku,
+                barcode,
+                price,
+                cost_price,
+                quantity,
+                low_stock_threshold,
+            },
+        });
+        res.status(201).json(product);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to create product' });
+    }
+});
+
 export default router;
