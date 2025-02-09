@@ -14,6 +14,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get vendor by ID
+// @ts-ignore
 router.get('/:id', async (req, res) => {
     try {
         const vendor = await prisma.vendor.findUnique({
