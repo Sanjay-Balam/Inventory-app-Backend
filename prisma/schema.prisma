@@ -1,0 +1,177 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    user_id    Int      @id @default(autoincrement())
+    name       String
+    email      String   @unique
+    phone      String   @unique
+    password   String
+    created_at DateTime @default(now())
+
+    orders Order[] @relation("UserOrders")
+}
+
+model SalesChannel {
+    channel_id  Int     @id @default(autoincrement())
+    name        String
+    description String?
+
+    inventory    Inventory[]
+    orders       Order[]
+    transactions Transactions[]
+}
+
+model Category {
+    category_id Int     @id @default(autoincrement())
+    name        String
+    description String?
+
+    products Product[]
+}
+
+model Product {
+    product_id          Int      @id @default(autoincrement())
+    category_id         Int
+    name                String
+    sku                 String   @unique
+    barcode             String   @unique
+    price               Decimal
+    cost_price          Decimal
+    quantity            Int
+    low_stock_threshold Int
+    color               String?
+    material            String?
+    size                String?
+    final_selling_price Decimal?
+    description         String?
+    variant_1           String?
+    variant_2           String?
+    image_url           String?
+    created_at          DateTime @default(now())
+
+    category       Category        @relation(fields: [category_id], references: [category_id])
+    inventory      Inventory[]
+    orderItems     OrderItem[]
+    transactions   Transactions[]
+    lowStockAlerts LowStockAlert[]
+}
+
+model Inventory {
+    inventory_id Int      @id @default(autoincrement())
+    product_id   Int
+    channel_id   Int
+    stock        Int
+    last_updated DateTime @default(now())
+
+    product Product      @relation(fields: [product_id], references: [product_id])
+    channel SalesChannel @relation(fields: [channel_id], references: [channel_id])
+
+    @@unique(fields: [product_id, channel_id], name: "product_id_channel_id")
+}
+
+model Order {
+    order_id     Int      @id @default(autoincrement())
+    customer_id  Int
+    channel_id   Int
+    total_amount Decimal
+    order_status String   @default("Pending")
+    created_at   DateTime @default(now())
+
+    customer     Customer       @relation("CustomerOrders", fields: [customer_id], references: [customer_id])
+    channel      SalesChannel   @relation(fields: [channel_id], references: [channel_id])
+    orderItems   OrderItem[]
+    transactions Transactions[]
+    user_id      Int
+    user         User           @relation("UserOrders", fields: [user_id], references: [user_id])
+}
+
+model OrderItem {
+    order_item_id Int     @id @default(autoincrement())
+    order_id      Int
+    product_id    Int
+    quantity      Int
+    price         Decimal
+
+    order   Order   @relation(fields: [order_id], references: [order_id])
+    product Product @relation(fields: [product_id], references: [product_id])
+}
+
+model LowStockAlert {
+    alert_id      Int      @id @default(autoincrement())
+    product_id    Int
+    current_stock Int
+    threshold     Int
+    alert_status  String   @default("Pending")
+    created_at    DateTime @default(now())
+
+    product Product @relation(fields: [product_id], references: [product_id])
+}
+
+model Transactions {
+    transaction_id   Int      @id @default(autoincrement())
+    product_id       Int
+    channel_id       Int
+    transaction_type String
+    quantity         Int
+    transaction_date DateTime @default(now())
+    order_id         Int?
+
+    product Product      @relation(fields: [product_id], references: [product_id])
+    channel SalesChannel @relation(fields: [channel_id], references: [channel_id])
+    order   Order?       @relation(fields: [order_id], references: [order_id])
+}
+
+model Customer {
+    customer_id Int      @id @default(autoincrement())
+    name        String
+    email       String?  @unique
+    phone       String   @unique
+    address     String?
+    created_at  DateTime @default(now())
+
+    orders         Order[] @relation("CustomerOrders")
+    credit_balance Decimal @default(0)
+    credit_limit   Decimal @default(0)
+
+    credit_transactions CustomerCreditTransaction[]
+}
+
+model Vendor {
+    vendor_id    Int                 @id @default(autoincrement())
+    name         String
+    email        String?             @unique
+    phone        String              @unique
+    address      String?
+    balance      Decimal             @default(0)
+    created_at   DateTime            @default(now())
+    transactions VendorTransaction[]
+}
+
+model VendorTransaction {
+    transaction_id Int      @id @default(autoincrement())
+    vendor_id      Int
+    amount         Decimal
+    type           String // PAYMENT or PURCHASE
+    description    String?
+    created_at     DateTime @default(now())
+
+    vendor Vendor @relation(fields: [vendor_id], references: [vendor_id])
+}
+
+model CustomerCreditTransaction {
+    transaction_id Int      @id @default(autoincrement())
+    customer_id    Int
+    amount         Decimal
+    type           String // CREDIT or PAYMENT
+    description    String?
+    created_at     DateTime @default(now())
+
+    customer Customer @relation(fields: [customer_id], references: [customer_id])
+}

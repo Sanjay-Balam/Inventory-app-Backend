@@ -163,7 +163,7 @@ router.post('/create', async (req: Request, res: Response) => {
                     channel_id: parseInt(channel_id),
                     total_amount,
                     order_status: 'PENDING',
-                    created_by: parseInt(user_id)
+                    user_id: parseInt(user_id)
                 }
             });
 

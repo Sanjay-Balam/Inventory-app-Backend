@@ -140,8 +140,6 @@ router.post('/inventory/update', async (req: Request, res: Response) => {
         });
     }
 });
-
-// Get low stock alerts
 router.get('/low-stock-alerts', async (_req: Request, res: Response) => {
     try {
         const alerts = await prisma.lowStockAlert.findMany({
@@ -199,17 +197,41 @@ router.get('/low-stock-alerts', async (_req: Request, res: Response) => {
 // Add new product
 router.post('/products', async (req, res) => {
     try {
-        const { name, sku, barcode, price, cost_price, quantity, low_stock_threshold, category } = req.body;
+        const { 
+            name, 
+            sku, 
+            barcode, 
+            price, 
+            cost_price, 
+            quantity, 
+            low_stock_threshold, 
+            category,
+            color,
+            material,
+            size,
+            final_selling_price,
+            description,
+            variant_1,
+            variant_2
+        } = req.body;
+        
         const product = await prisma.product.create({
             data: {
                 name,
                 sku,
                 barcode,
                 price,
-                category,
                 cost_price,
                 quantity,
                 low_stock_threshold,
+                category,
+                color,
+                material,
+                size,
+                final_selling_price,
+                description,
+                variant_1,
+                variant_2
             },
         });
         res.status(201).json(product);

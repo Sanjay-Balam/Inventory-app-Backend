@@ -4,6 +4,8 @@ import orderRouter from './routes/orders';
 import barcodeRouter from './routes/barcode';
 import vendorRouter from './routes/vendor';
 import customerCreditRouter from './routes/customer-credit';
+import analyticsRouter from './routes/analytics';
+import bulkRouter from './routes/bulk';
 
 const app = express();
 
@@ -25,9 +27,8 @@ app.use('/api/orders', orderRouter);
 app.use('/api/barcode', barcodeRouter);
 app.use('/api/vendors', vendorRouter);
 app.use('/api/customers', customerCreditRouter);
-// ... existing code ...
-
-// ... rest of the code ...
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/bulk', bulkRouter);
 
 const PORT = process.env.SERVER_PORT || 3000;
 
