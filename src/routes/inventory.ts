@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../config/db';
+import { logTransaction } from '../utils/transactionLogger';
+import Logger from '../utils/logger';
 
 const router = Router();
+
+// At the start of your route handlers, add:
+Logger.debug('Inventory routes initialized');
 
 // Get all products
 router.get('/products', async (req, res) => {
@@ -125,6 +130,7 @@ router.post('/inventory/update', async (req: Request, res: Response) => {
                 });
             }
 
+            logTransaction.inventoryUpdated(inventory, inventory.stock);
             return inventory;
         });
 
@@ -134,7 +140,7 @@ router.post('/inventory/update', async (req: Request, res: Response) => {
         });
 
     } catch (error) {
-        console.error('Inventory update error:', error);
+        logTransaction.error('Update Inventory', error as Error);
         return res.status(500).json({ 
             error: 'Failed to update inventory',
             details: error instanceof Error ? error.message : 'Unknown error'
@@ -238,8 +244,11 @@ router.post('/products', async (req, res) => {
                 variant_2
             },
         });
+        
+        logTransaction.productCreated(product);
         res.status(201).json(product);
     } catch (error) {
+        logTransaction.error('Create Product', error as Error);
         res.status(500).json({ error: 'Failed to create product' });
     }
 });
