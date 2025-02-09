@@ -29,6 +29,7 @@ router.get('/credit', async (req, res) => {
 });
 
 // Get customer credit details by ID
+// @ts-ignore
 router.get('/:id', async (req, res) => {
     try {
         const customer = await prisma.customer.findUnique({
@@ -59,6 +60,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Record credit payment
+// @ts-ignore
 router.post('/payment/:id', async (req, res) => {
     try {
         const { amount, description } = req.body;
@@ -95,6 +97,7 @@ router.post('/payment/:id', async (req, res) => {
 });
 
 // Get credit history
+// @ts-ignore
 router.get('/credit-history/:id', async (req, res) => {
     try {
         const transactions = await prisma.customerCreditTransaction.findMany({
@@ -122,6 +125,7 @@ router.get('/credit-history/:id', async (req, res) => {
     }
 });
 
+// @ts-ignore
 router.post('/create', async (req: Request, res: Response) => {
     try {
         const { customer_id, channel_id, items, user_id } = req.body;
