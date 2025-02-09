@@ -144,9 +144,7 @@ model Vendor {
   address    String?
   balance    Decimal  @default(0)
   created_at DateTime @default(now())
-
   transactions VendorTransaction[]
-  products     Product[]
 }
 
 model VendorTransaction {

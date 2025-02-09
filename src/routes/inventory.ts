@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import prisma from '../config/db';
 
 const router = Router();
@@ -98,21 +98,56 @@ router.post('/inventory/update', async (req, res) => {
 });
 
 // Get low stock alerts
-router.get('/low-stock-alerts', async (req, res) => {
+router.get('/low-stock-alerts', async (_req: Request, res: Response) => {
     try {
         const alerts = await prisma.lowStockAlert.findMany({
             where: {
-                alert_status: 'Pending'
+                alert_status: 'Pending',
+                current_stock: {
+                    lt: prisma.lowStockAlert.fields.threshold
+                }
             },
             include: {
-                product: true
+                product: {
+                    select: {
+                        product_id: true,
+                        name: true,
+                        sku: true,
+                        quantity: true,
+                        low_stock_threshold: true
+                    }
+                }
             },
             orderBy: {
                 created_at: 'desc'
             }
         });
-        res.json(alerts);
+
+        if (!alerts.length) {
+            return res.json({ 
+                message: 'No products below threshold', 
+                alerts: [] 
+            });
+        }
+
+        // Transform the response to include more meaningful information
+        const formattedAlerts = alerts.map(alert => ({
+            alert_id: alert.alert_id,
+            product_name: alert.product.name,
+            sku: alert.product.sku,
+            current_stock: alert.current_stock,
+            threshold: alert.threshold,
+            status: alert.alert_status,
+            created_at: alert.created_at,
+            shortage: alert.threshold - alert.current_stock
+        }));
+
+        res.json({
+            message: 'Products below threshold found',
+            alerts: formattedAlerts
+        });
     } catch (error) {
+        console.error('Low stock alerts error:', error);
         res.status(500).json({ error: 'Failed to fetch low stock alerts' });
     }
 });
@@ -120,14 +155,14 @@ router.get('/low-stock-alerts', async (req, res) => {
 // Add new product
 router.post('/products', async (req, res) => {
     try {
-        const { name, sku, barcode, price, cost_price, quantity, low_stock_threshold } = req.body;
-
+        const { name, sku, barcode, price, cost_price, quantity, low_stock_threshold, category } = req.body;
         const product = await prisma.product.create({
             data: {
                 name,
                 sku,
                 barcode,
                 price,
+                category,
                 cost_price,
                 quantity,
                 low_stock_threshold,

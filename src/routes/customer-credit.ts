@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import prisma from '../config/db';
 
 const router = Router();
@@ -19,26 +20,6 @@ router.get('/credit', async (req, res) => {
     }
 });
 
-// Get customer credit details
-router.get('/:id', async (req, res) => {
-    try {
-        const customer = await prisma.customer.findUnique({
-            where: { customer_id: parseInt(req.params.id) },
-            select: {
-                customer_id: true,
-                name: true,
-                credit_balance: true,
-                credit_limit: true,
-            }
-        });
-        if (!customer) {
-            return res.status(404).json({ error: 'Customer not found' });
-        }
-        res.json(customer);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch customer' });
-    }
-});
 
 // Record credit payment
 router.post('/payment/:id', async (req, res) => {

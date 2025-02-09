@@ -99,14 +99,15 @@ model OrderItem {
 }
 
 model LowStockAlert {
-  alert_id      Int      @id @default(autoincrement())
-  product_id    Int
+  alert_id     Int      @id @default(autoincrement())
+  product_id   Int
+  alert_status String   @default("PENDING") // PENDING, RESOLVED, IGNORED
+  threshold    Int
   current_stock Int
-  threshold     Int
-  alert_status  String   @default("Pending")
-  created_at    DateTime @default(now())
+  created_at   DateTime @default(now())
+  resolved_at  DateTime?
 
-  product Product @relation(fields: [product_id], references: [product_id])
+  product      Product  @relation(fields: [product_id], references: [product_id])
 }
 
 model Transactions {
