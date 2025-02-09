@@ -55,45 +55,89 @@ router.get('/inventory/:id', async (req, res) => {
 });
 
 // Update inventory
-router.post('/inventory/update', async (req, res) => {
+router.post('/inventory/update', async (req: Request, res: Response) => {
     try {
         const { product_id, channel_id, stock } = req.body;
 
-        const inventory = await prisma.inventory.upsert({
-            where: {
-                product_id_channel_id: {
-                    product_id: parseInt(product_id),
-                    channel_id: parseInt(channel_id)
-                }
-            },
-            update: {
-                stock: parseInt(stock)
-            },
-            create: {
-                product_id: parseInt(product_id),
-                channel_id: parseInt(channel_id),
-                stock: parseInt(stock)
-            }
-        });
+        // Input validation
+        if (!product_id || !channel_id || stock === undefined) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: product_id, channel_id, stock' 
+            });
+        }
 
-        // Check for low stock alert
+        // Validate product exists
         const product = await prisma.product.findUnique({
             where: { product_id: parseInt(product_id) }
         });
 
-        if (product && inventory.stock <= product.low_stock_threshold) {
-            await prisma.lowStockAlert.create({
-                data: {
-                    product_id: parseInt(product_id),
-                    current_stock: inventory.stock,
-                    threshold: product.low_stock_threshold
-                }
-            });
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
         }
 
-        res.json(inventory);
+        // Validate channel exists
+        const channel = await prisma.salesChannel.findUnique({
+            where: { channel_id: parseInt(channel_id) }
+        });
+
+        if (!channel) {
+            return res.status(404).json({ error: 'Channel not found' });
+        }
+
+        // Update inventory using transaction
+        const result = await prisma.$transaction(async (prisma) => {
+            const inventory = await prisma.inventory.upsert({
+                where: {
+                    product_id_channel_id: {
+                        product_id: parseInt(product_id),
+                        channel_id: parseInt(channel_id)
+                    }
+                },
+                update: {
+                    stock: parseInt(stock),
+                    last_updated: new Date()
+                },
+                create: {
+                    product_id: parseInt(product_id),
+                    channel_id: parseInt(channel_id),
+                    stock: parseInt(stock)
+                },
+                include: {
+                    product: {
+                        select: {
+                            name: true,
+                            sku: true
+                        }
+                    }
+                }
+            });
+
+            // Create low stock alert if needed
+            if (inventory.stock <= product.low_stock_threshold) {
+                await prisma.lowStockAlert.create({
+                    data: {
+                        product_id: parseInt(product_id),
+                        current_stock: inventory.stock,
+                        threshold: product.low_stock_threshold,
+                        alert_status: 'PENDING'
+                    }
+                });
+            }
+
+            return inventory;
+        });
+
+        return res.json({
+            success: true,
+            inventory: result
+        });
+
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update inventory' });
+        console.error('Inventory update error:', error);
+        return res.status(500).json({ 
+            error: 'Failed to update inventory',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 });
 

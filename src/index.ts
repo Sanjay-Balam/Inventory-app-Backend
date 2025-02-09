@@ -25,6 +25,9 @@ app.use('/api/orders', orderRouter);
 app.use('/api/barcode', barcodeRouter);
 app.use('/api/vendors', vendorRouter);
 app.use('/api/customers', customerCreditRouter);
+// ... existing code ...
+
+// ... rest of the code ...
 
 const PORT = process.env.SERVER_PORT || 3000;
 
