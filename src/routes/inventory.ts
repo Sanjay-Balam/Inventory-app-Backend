@@ -97,8 +97,9 @@ router.post('/inventory/update', async (req, res) => {
     }
 });
 
-// Get low stock alerts
-router.get('/low-stock-alerts', async (_req: Request, res: Response) => {
+// Get low stock alerts`
+// @ts-ignore
+router.get('/low-stock-alerts', async (req: Request, res: Response) => {
     try {
         const alerts = await prisma.lowStockAlert.findMany({
             where: {
