@@ -60,6 +60,7 @@ router.get('/inventory/:id', async (req, res) => {
 });
 
 // Update inventory
+// @ts-ignore
 router.post('/inventory/update', async (req: Request, res: Response) => {
     try {
         const { product_id, channel_id, stock } = req.body;

@@ -16,10 +16,11 @@ router.post('/signup', async (req, res) => {
     try {
         const { username, email, phone, password } = req.body;
 
-        // Check if user already exists
+        // Check if user already exists (username, email, or phone)
         const existingUser = await prisma.user.findFirst({
             where: {
                 OR: [
+                    { name: username },
                     { email },
                     { phone }
                 ]
@@ -27,6 +28,12 @@ router.post('/signup', async (req, res) => {
         });
 
         if (existingUser) {
+            // Return specific message based on what field already exists
+            if (existingUser.name === username) {
+                return res.status(400).json({
+                    error: 'Username already exists'
+                });
+            }
             return res.status(400).json({
                 error: 'User already exists with this email or phone'
             });
@@ -45,31 +52,14 @@ router.post('/signup', async (req, res) => {
             }
         });
 
-        // Generate tokens
-        const authToken = jwt.sign(
-            { userId: user.user_id },
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-
-        const refreshToken = jwt.sign(
-            { userId: user.user_id },
-            JWT_REFRESH_SECRET,
-            { expiresIn: '7d' }
-        );
-
-        Logger.info(`New user registered: ${user.email}`);
-
-        // Return user data and tokens with Bearer prefix
+        // Return user data without tokens
         res.status(201).json({
             user: {
                 id: user.user_id,
                 name: user.name,
                 email: user.email,
                 phone: user.phone
-            },
-            // authToken,
-            // refreshToken
+            }
         });
 
     } catch (error) {
@@ -82,11 +72,11 @@ router.post('/signup', async (req, res) => {
 // @ts-ignore
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
 
-        // Find user
-        const user = await prisma.user.findUnique({
-            where: { email }
+        // Find user by username instead of email
+        const user = await prisma.user.findFirst({
+            where: { name: username }
         });
 
         if (!user) {
@@ -99,7 +89,7 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Generate tokens
+        // Generating tokens
         const authToken = jwt.sign(
             { userId: user.user_id },
             JWT_SECRET,
@@ -112,7 +102,7 @@ router.post('/login', async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        Logger.info(`User logged in: ${user.email}`);
+        Logger.info(`User logged in: ${user.name}`);
 
         // Return user data and tokens with Bearer prefix
         res.json({
