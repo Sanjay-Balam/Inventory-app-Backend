@@ -1,7 +1,16 @@
 import { Router } from 'express';
-import prisma from '../config/db';
+import { PrismaClient } from '@prisma/client';
+import { Request, Response } from 'express';
 
 const router = Router();
+const prisma = new PrismaClient();
+
+interface StockAdjustment {
+    inventory_id: number;
+    quantity: number;
+    type: 'IN' | 'OUT';
+    reason?: string;
+}
 
 // Bulk upload products
 router.post('/products/upload', async (req, res) => {
@@ -39,4 +48,86 @@ router.post('/inventory/update', async (req, res) => {
     }
 });
 
-export default router; 
+// Stock In/Out endpoint
+router.post('/stock-adjust', async (req: Request<{}, {}, StockAdjustment>, res: Response) => {
+    try {
+        const { inventory_id, quantity, type, reason } = req.body;
+
+        if (!inventory_id || !quantity || !type) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const inventory = await prisma.inventory.findUnique({
+            where: { inventory_id },
+            include: { product: true }
+        });
+
+        if (!inventory) {
+            return res.status(404).json({ error: 'Inventory not found' });
+        }
+
+        // Calculate new stock
+        const newStock = type === 'IN' 
+            ? inventory.stock + quantity 
+            : inventory.stock - quantity;
+
+        if (newStock < 0) {
+            return res.status(400).json({ error: 'Insufficient stock' });
+        }
+
+        const result = await prisma.$transaction(async (tx) => {
+            // Update inventory
+            const updatedInventory = await tx.inventory.update({
+                where: { inventory_id },
+                data: { 
+                    stock: newStock,
+                    last_updated: new Date()
+                },
+                include: {
+                    product: {
+                        select: {
+                            name: true,
+                            sku: true,
+                            low_stock_threshold: true
+                        }
+                    }
+                }
+            });
+
+            // Record stock movement
+            await tx.stockMovement.create({
+                data: {
+                    inventory_id,
+                    quantity,
+                    type: type === 'IN' ? 'STOCK_IN' : 'STOCK_OUT',
+                    reason: reason || `Stock ${type.toLowerCase()}`,
+                }
+            });
+
+            // Check for low stock alert
+            if (newStock <= inventory.product.low_stock_threshold) {
+                await tx.lowStockAlert.create({
+                    data: {
+                        product_id: inventory.product_id,
+                        current_stock: newStock,
+                        threshold: inventory.product.low_stock_threshold,
+                        alert_status: 'PENDING'
+                    }
+                });
+            }
+
+            return updatedInventory;
+        });
+
+        return res.json({
+            success: true,
+            inventory: result
+        });
+
+    } catch (error) {
+        console.error('Stock adjustment error:', error);
+        return res.status(500).json({ error: 'Failed to adjust stock' });
+    }
+});
+
+export default router;

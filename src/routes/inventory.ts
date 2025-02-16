@@ -60,38 +60,20 @@ router.get('/inventory/:id', async (req, res) => {
 });
 
 // Update inventory
-// @ts-ignore
 router.post('/inventory/update', async (req: Request, res: Response) => {
     try {
         const { product_id, channel_id, stock } = req.body;
 
         // Input validation
-        if (!product_id || !channel_id || stock === undefined) {
+        if (!product_id || !channel_id || stock === undefined || stock < 0) {
             return res.status(400).json({ 
-                error: 'Missing required fields: product_id, channel_id, stock' 
+                error: 'Invalid input: stock must be non-negative and all fields are required' 
             });
         }
 
-        // Validate product exists
-        const product = await prisma.product.findUnique({
-            where: { product_id: parseInt(product_id) }
-        });
-
-        if (!product) {
-            return res.status(404).json({ error: 'Product not found' });
-        }
-
-        // Validate channel exists
-        const channel = await prisma.salesChannel.findUnique({
-            where: { channel_id: parseInt(channel_id) }
-        });
-
-        if (!channel) {
-            return res.status(404).json({ error: 'Channel not found' });
-        }
-
-        // Update inventory using transaction
+        // Update both inventory and product tables in a transaction
         const result = await prisma.$transaction(async (prisma) => {
+            // Update inventory
             const inventory = await prisma.inventory.upsert({
                 where: {
                     product_id_channel_id: {
@@ -107,15 +89,13 @@ router.post('/inventory/update', async (req: Request, res: Response) => {
                     product_id: parseInt(product_id),
                     channel_id: parseInt(channel_id),
                     stock: parseInt(stock)
-                },
-                include: {
-                    product: {
-                        select: {
-                            name: true,
-                            sku: true
-                        }
-                    }
                 }
+            });
+
+            // Update product quantity
+            const product = await prisma.product.update({
+                where: { product_id: parseInt(product_id) },
+                data: { quantity: parseInt(stock) }
             });
 
             // Create low stock alert if needed
@@ -131,12 +111,12 @@ router.post('/inventory/update', async (req: Request, res: Response) => {
             }
 
             logTransaction.inventoryUpdated(inventory, inventory.stock);
-            return inventory;
+            return { inventory, product };
         });
 
         return res.json({
             success: true,
-            inventory: result
+            data: result
         });
 
     } catch (error) {
