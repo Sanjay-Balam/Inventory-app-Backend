@@ -8,11 +8,13 @@ import vendorRouter from './routes/vendor';
 import customerCreditRouter from './routes/customer-credit';
 import analyticsRouter from './routes/analytics';
 import bulkRouter from './routes/bulk';
-
+import authRouter from './routes/auth';
+import cors from 'cors';
 const app = express();
 
 // Request logging middleware
 app.use(requestLogger);
+app.use(cors());
 
 // Modify the JSON parser to ignore GET requests
 app.use((req, res, next) => {
@@ -34,7 +36,7 @@ app.use('/api/vendors', vendorRouter);
 app.use('/api/customers', customerCreditRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/bulk', bulkRouter);
-
+app.use('/api/auth', authRouter);
 // Error logging middleware
 app.use(errorLogger);
 
