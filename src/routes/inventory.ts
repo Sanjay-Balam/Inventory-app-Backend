@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import prisma from '../config/db';
 import { logTransaction } from '../utils/transactionLogger';
 import Logger from '../utils/logger';
+import { Decimal } from '@prisma/client/runtime/library';
 
 const router = Router();
 
@@ -196,41 +197,64 @@ router.post('/products', async (req, res) => {
             cost_price, 
             quantity, 
             low_stock_threshold, 
-            category,
+            category_id,
             color,
             material,
             size,
             final_selling_price,
             description,
             variant_1,
-            variant_2
+            variant_2,
+            image_url
         } = req.body;
         
+        // Validate required fields
+        if (!name || !sku || !barcode || !price || !cost_price || !quantity || !low_stock_threshold || !category_id) {
+            return res.status(400).json({ 
+                error: 'Missing required fields',
+                required: ['name', 'sku', 'barcode', 'price', 'cost_price', 'quantity', 'low_stock_threshold', 'category_id']
+            });
+        }
+
         const product = await prisma.product.create({
             data: {
                 name,
                 sku,
                 barcode,
-                price,
-                cost_price,
-                quantity,
-                low_stock_threshold,
-                category,
+                price: new Decimal(price),
+                cost_price: new Decimal(cost_price),
+                quantity: parseInt(quantity),
+                low_stock_threshold: parseInt(low_stock_threshold),
+                category_id: parseInt(category_id),
                 color,
                 material,
                 size,
-                final_selling_price,
+                final_selling_price: final_selling_price ? new Decimal(final_selling_price) : null,
                 description,
                 variant_1,
-                variant_2
+                variant_2,
+                image_url
             },
+            include: {
+                category: true
+            }
         });
         
         logTransaction.productCreated(product);
         res.status(201).json(product);
     } catch (error) {
+        console.error('Product creation error:', error);
+        if (error.code === 'P2002') {
+            return res.status(400).json({ 
+                error: 'Duplicate entry',
+                details: 'SKU or barcode already exists'
+            });
+        }
         logTransaction.error('Create Product', error as Error);
-        res.status(500).json({ error: 'Failed to create product' });
+        res.status(500).json({ 
+            error: 'Failed to create product',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 });
 
