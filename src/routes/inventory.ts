@@ -5,6 +5,9 @@ import Logger from '../utils/logger';
 
 const router = Router();
 
+// Protect all routes in this router
+// router.use(authMiddleware as any);
+
 // At the start of your route handlers, add:
 Logger.debug('Inventory routes initialized');
 
@@ -61,7 +64,7 @@ router.get('/inventory/:id', async (req, res) => {
 
 // Update inventory
 // @ts-ignore
-router.post('/inventory/update', async (req: Request, res: Response) => {
+router.post('/update', async (req: Request, res: Response) => {
     try {
         const { product_id, channel_id, stock } = req.body;
 

@@ -10,11 +10,17 @@ import analyticsRouter from './routes/analytics';
 import bulkRouter from './routes/bulk';
 import authRouter from './routes/auth';
 import cors from 'cors';
+import { authMiddleware } from './middleware/auth';
 const app = express();
 
 // Request logging middleware
 app.use(requestLogger);
-app.use(cors());
+app.use(cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:4000",
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }));
 
 // Modify the JSON parser to ignore GET requests
 app.use((req, res, next) => {
@@ -28,7 +34,13 @@ app.use((req, res, next) => {
 // Keep existing URL encoded config
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// Routes
+// Public routes (no auth required)
+app.use('/api/auth', authRouter);
+
+// Apply auth middleware for all routes after this point
+// app.use(authMiddleware as any);
+
+// Protected routes
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/barcode', barcodeRouter);
@@ -36,7 +48,7 @@ app.use('/api/vendors', vendorRouter);
 app.use('/api/customers', customerCreditRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/bulk', bulkRouter);
-app.use('/api/auth', authRouter);
+
 // Error logging middleware
 app.use(errorLogger);
 
