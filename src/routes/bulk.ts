@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import Decimal from 'decimal.js';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -15,14 +16,50 @@ interface StockAdjustment {
 // Bulk upload products
 router.post('/products/upload', async (req, res) => {
     try {
-        const products = req.body.products;
+        console.log('Received products:', req.body.products); // Debug log
+
+        const products = req.body.products.map((product: any) => {
+            console.log('Processing product:', product); // Debug log
+            return {
+                name: product.name,
+                sku: product.sku,
+                barcode: product.barcode,
+                price: new Decimal(product.price),
+                cost_price: new Decimal(product.cost_price),
+                quantity: parseInt(product.quantity),
+                low_stock_threshold: parseInt(product.low_stock_threshold),
+                category_id: parseInt(product.category_id),
+                color: product.color,
+                material: product.material,
+                size: product.size,
+                final_selling_price: product.final_selling_price ? new Decimal(product.final_selling_price) : null,
+                description: product.description,
+                variant_1: product.variant_1,
+                variant_2: product.variant_2
+            };
+        });
+
+        console.log('Transformed products:', products); // Debug log
+
         const result = await prisma.product.createMany({
             data: products,
             skipDuplicates: true
         });
-        res.status(201).json(result);
+
+        console.log('Prisma result:', result); // Debug log
+
+        res.status(201).json({
+            success: true,
+            count: result.count,
+            message: `Successfully created ${result.count} products`
+        });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to bulk upload products' });
+        console.error('Detailed error:', error); // More detailed error logging
+        res.status(500).json({ 
+            error: 'Failed to bulk upload products',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            fullError: JSON.stringify(error, null, 2) // Include full error details
+        });
     }
 });
 
