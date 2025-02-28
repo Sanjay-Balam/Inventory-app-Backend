@@ -13,25 +13,31 @@ model User {
     email      String   @unique
     phone      String   @unique
     password   String
+    role       String
     created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
 
-    orders Order[] @relation("UserOrders")
+    orders Order[] @relation("OrderToUser")
 }
 
 model SalesChannel {
-    channel_id  Int     @id @default(autoincrement())
+    channel_id  Int      @id @default(autoincrement())
     name        String
     description String?
+    created_at  DateTime @default(now())
+    updated_at  DateTime @updatedAt
 
     inventory    Inventory[]
-    orders       Order[]
+    orders       Order[]        @relation("OrderToChannel")
     transactions Transactions[]
 }
 
 model Category {
-    category_id Int     @id @default(autoincrement())
+    category_id Int      @id @default(autoincrement())
     name        String
     description String?
+    created_at  DateTime @default(now())
+    updated_at  DateTime @updatedAt
 
     products Product[]
 }
@@ -55,6 +61,7 @@ model Product {
     variant_2           String?
     image_url           String?
     created_at          DateTime @default(now())
+    updated_at          DateTime @updatedAt
 
     category       Category        @relation(fields: [category_id], references: [category_id])
     inventory      Inventory[]
@@ -80,24 +87,27 @@ model Order {
     order_id     Int      @id @default(autoincrement())
     customer_id  Int
     channel_id   Int
-    total_amount Decimal
-    order_status String   @default("Pending")
-    created_at   DateTime @default(now())
-
-    customer     Customer       @relation("CustomerOrders", fields: [customer_id], references: [customer_id])
-    channel      SalesChannel   @relation(fields: [channel_id], references: [channel_id])
-    orderItems   OrderItem[]
-    transactions Transactions[]
     user_id      Int
-    user         User           @relation("UserOrders", fields: [user_id], references: [user_id])
+    total_amount Decimal
+    order_status String   @default("PENDING")
+    created_at   DateTime @default(now())
+    updated_at   DateTime @updatedAt
+
+    customer     Customer       @relation("OrderToCustomer", fields: [customer_id], references: [customer_id])
+    channel      SalesChannel   @relation("OrderToChannel", fields: [channel_id], references: [channel_id])
+    user         User           @relation("OrderToUser", fields: [user_id], references: [user_id])
+    orderItems   OrderItem[]
+    Transactions Transactions[]
 }
 
 model OrderItem {
-    order_item_id Int     @id @default(autoincrement())
+    order_item_id Int      @id @default(autoincrement())
     order_id      Int
     product_id    Int
     quantity      Int
     price         Decimal
+    created_at    DateTime @default(now())
+    updated_at    DateTime @updatedAt
 
     order   Order   @relation(fields: [order_id], references: [order_id])
     product Product @relation(fields: [product_id], references: [product_id])
@@ -135,8 +145,9 @@ model Customer {
     phone       String   @unique
     address     String?
     created_at  DateTime @default(now())
+    updated_at  DateTime @updatedAt
 
-    orders         Order[] @relation("CustomerOrders")
+    orders         Order[] @relation("OrderToCustomer")
     credit_balance Decimal @default(0)
     credit_limit   Decimal @default(0)
 
@@ -172,6 +183,7 @@ model CustomerCreditTransaction {
     type           String // CREDIT or PAYMENT
     description    String?
     created_at     DateTime @default(now())
+    updated_at     DateTime @updatedAt
 
     customer Customer @relation(fields: [customer_id], references: [customer_id])
 }

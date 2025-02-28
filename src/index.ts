@@ -11,6 +11,7 @@ import bulkRouter from './routes/bulk';
 import authRouter from './routes/auth';
 import cors from 'cors';
 import { authMiddleware } from './middleware/auth';
+import customerRouter from './routes/customers';
 const app = express();
 
 // Request logging middleware
@@ -45,7 +46,8 @@ app.use('/api/inventory', inventoryRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/barcode', barcodeRouter);
 app.use('/api/vendors', vendorRouter);
-app.use('/api/customers', customerCreditRouter);
+app.use('/api/customers', customerRouter);
+app.use('/api/customers/credit', customerCreditRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/bulk', bulkRouter);
 

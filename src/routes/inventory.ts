@@ -3,6 +3,7 @@ import prisma from '../config/db';
 import { logTransaction } from '../utils/transactionLogger';
 import Logger from '../utils/logger';
 import { Decimal } from '@prisma/client/runtime/library';
+import { v4 as uuidv4 } from 'uuid'; // Add this import
 
 const router = Router();
 
@@ -212,18 +213,21 @@ router.post('/products', async (req, res) => {
         } = req.body;
         
         // Validate required fields
-        if (!name || !sku || !barcode || !price || !cost_price || !quantity || !low_stock_threshold || !category_id) {
+        if (!name || !sku || !price || !cost_price || !quantity || !low_stock_threshold || !category_id) {
             return res.status(400).json({ 
                 error: 'Missing required fields',
-                required: ['name', 'sku', 'barcode', 'price', 'cost_price', 'quantity', 'low_stock_threshold', 'category_id']
+                required: ['name', 'sku', 'price', 'cost_price', 'quantity', 'low_stock_threshold', 'category_id']
             });
         }
+
+        // Generate barcode if not provided
+        const generatedBarcode = barcode || uuidv4();
 
         const product = await prisma.product.create({
             data: {
                 name,
                 sku,
-                barcode,
+                barcode: generatedBarcode,
                 price: new Decimal(price),
                 cost_price: new Decimal(cost_price),
                 quantity: parseInt(quantity),
