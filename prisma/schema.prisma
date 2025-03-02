@@ -13,7 +13,7 @@ model User {
     email      String   @unique
     phone      String   @unique
     password   String
-    role       String
+    role       String   @default("USER")  // Added default value
     created_at DateTime @default(now())
     updated_at DateTime @updatedAt
 

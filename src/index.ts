@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import { requestLogger, errorLogger } from './middleware/requestLogger';
 import Logger from './utils/logger';
 import inventoryRouter from './routes/inventory';
@@ -22,6 +23,9 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }));
+
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Modify the JSON parser to ignore GET requests
 app.use((req, res, next) => {

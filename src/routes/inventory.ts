@@ -4,6 +4,7 @@ import { logTransaction } from '../utils/transactionLogger';
 import Logger from '../utils/logger';
 import { Decimal } from '@prisma/client/runtime/library';
 import { v4 as uuidv4 } from 'uuid'; // Add this import
+import { generateBarcodeImage } from '../utils/barcodeGenerator';
 
 const router = Router();
 
@@ -223,6 +224,9 @@ router.post('/products', async (req, res) => {
         // Generate barcode if not provided
         const generatedBarcode = barcode || uuidv4();
 
+        // Generate barcode image
+        const barcodeImagePath = await generateBarcodeImage(generatedBarcode, sku);
+
         const product = await prisma.product.create({
             data: {
                 name,
@@ -240,7 +244,7 @@ router.post('/products', async (req, res) => {
                 description,
                 variant_1,
                 variant_2,
-                image_url
+                image_url: barcodeImagePath // Save barcode image path
             },
             include: {
                 category: true
@@ -248,10 +252,13 @@ router.post('/products', async (req, res) => {
         });
         
         logTransaction.productCreated(product);
-        res.status(201).json(product);
+        res.status(201).json({
+            ...product,
+            barcodeUrl: `${process.env.BASE_URL || 'http://localhost:3000'}${barcodeImagePath}`
+        });
     } catch (error) {
         console.error('Product creation error:', error);
-        if (error.code === 'P2002') {
+        if ((error as any).code === 'P2002') {
             return res.status(400).json({ 
                 error: 'Duplicate entry',
                 details: 'SKU or barcode already exists'
