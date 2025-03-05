@@ -223,9 +223,18 @@ router.post('/products', async (req, res) => {
 
         // Generate barcode if not provided
         const generatedBarcode = barcode || uuidv4();
-
-        // Generate barcode image
-        const barcodeImagePath = await generateBarcodeImage(generatedBarcode, sku);
+        
+        let barcodeImagePath = null;
+        let barcodeError = null;
+        
+        // Try to generate barcode image, but don't fail the whole request if it fails
+        try {
+            barcodeImagePath = await generateBarcodeImage(generatedBarcode, sku, name);
+        } catch (error) {
+            console.error('Barcode generation failed:', error);
+            barcodeError = error instanceof Error ? error.message : 'Unknown barcode generation error';
+            // Continue with product creation even if barcode generation fails
+        }
 
         const product = await prisma.product.create({
             data: {
@@ -254,7 +263,8 @@ router.post('/products', async (req, res) => {
         logTransaction.productCreated(product);
         res.status(201).json({
             ...product,
-            barcodeUrl: `${process.env.BASE_URL || 'http://localhost:3000'}${barcodeImagePath}`
+            barcodeUrl: barcodeImagePath ? `${process.env.BASE_URL || 'http://localhost:3000'}${barcodeImagePath}` : null,
+            barcodeError: barcodeError
         });
     } catch (error) {
         console.error('Product creation error:', error);
