@@ -32,12 +32,12 @@ app.use((req, res, next) => {
     if (req.method === 'GET') {
         next();
     } else {
-        express.json({ limit: '100kb' })(req, res, next);
+        express.json({ limit: '1000kb' })(req, res, next);
     }
 });
 
 // Keep existing URL encoded config
-app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '1000kb' }));
 
 // Public routes (no auth required)
 app.use('/api/auth', authRouter);

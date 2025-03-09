@@ -192,6 +192,7 @@ router.get('/low-stock-alerts', async (_req: Request, res: Response) => {
 });
 
 // Add new product
+// @ts-ignore
 router.post('/products', async (req, res) => {
     try {
         const { 

@@ -4,6 +4,7 @@ import prisma from '../config/db';
 const router = Router();
 
 // Scan product by barcode
+// @ts-ignore
 router.get('/scan/:barcode', async (req, res) => {
     try {
         const product = await prisma.product.findFirst({
