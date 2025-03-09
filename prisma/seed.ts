@@ -112,6 +112,102 @@ async function main() {
     }
   })
 
+  // Create a test user
+  const testUser = await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: {},
+    create: {
+      name: 'Admin User',
+      email: 'admin@example.com',
+      phone: '1234567890',
+      password: hashedPassword,
+      role: 'ADMIN',
+    },
+  })
+
+  console.log('Created user:', testUser)
+
+  // Create a test sales channel
+  const testChannel = await prisma.salesChannel.upsert({
+    where: { channel_id: 1 },
+    update: {},
+    create: {
+      name: 'Main Store',
+      description: 'Main physical store location',
+    },
+  })
+
+  console.log('Created sales channel:', testChannel)
+
+  // Create a test category
+  const testCategory = await prisma.category.upsert({
+    where: { category_id: 1 },
+    update: {},
+    create: {
+      name: 'Electronics',
+      description: 'Electronic devices and accessories',
+    },
+  })
+
+  console.log('Created category:', testCategory)
+
+  // Create a test product with barcode
+  const testProduct = await prisma.product.upsert({
+    where: { sku: 'TEST-SKU-001' },
+    update: {},
+    create: {
+      name: 'Test Product',
+      sku: 'TEST-SKU-001',
+      barcode: '123456789012', // This is the test barcode
+      price: 99.99,
+      cost_price: 75.00,
+      quantity: 100,
+      low_stock_threshold: 10,
+      description: 'This is a test product with a barcode',
+      category: {
+        connect: { category_id: testCategory.category_id },
+      },
+    },
+  })
+
+  console.log('Created product:', testProduct)
+
+  // Create inventory for the product
+  const testInventory = await prisma.inventory.upsert({
+    where: {
+      product_id_channel_id: {
+        product_id: testProduct.product_id,
+        channel_id: testChannel.channel_id,
+      },
+    },
+    update: {},
+    create: {
+      product: {
+        connect: { product_id: testProduct.product_id },
+      },
+      channel: {
+        connect: { channel_id: testChannel.channel_id },
+      },
+      stock: 100,
+    },
+  })
+
+  console.log('Created inventory:', testInventory)
+
+  // Create a test customer
+  const testCustomer = await prisma.customer.upsert({
+    where: { email: 'customer@example.com' },
+    update: {},
+    create: {
+      name: 'Test Customer',
+      email: 'customer@example.com',
+      phone: '9876543210',
+      address: '123 Test Street',
+    },
+  })
+
+  console.log('Created customer:', testCustomer)
+
   console.log('Seed data created successfully')
 }
 
