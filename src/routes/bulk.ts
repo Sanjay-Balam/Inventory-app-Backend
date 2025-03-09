@@ -132,14 +132,14 @@ router.post('/stock-adjust', async (req: Request<{}, {}, StockAdjustment>, res: 
             });
 
             // Record stock movement
-            await tx.stockMovement.create({
-                data: {
-                    inventory_id,
-                    quantity,
-                    type: type === 'IN' ? 'STOCK_IN' : 'STOCK_OUT',
-                    reason: reason || `Stock ${type.toLowerCase()}`,
-                }
-            });
+            // await tx.stockMovement.create({
+            //     data: {
+            //         inventory_id,
+            //         quantity,
+            //         type: type === 'IN' ? 'STOCK_IN' : 'STOCK_OUT',
+            //         reason: reason || `Stock ${type.toLowerCase()}`,
+            //     }
+            // });
 
             // Check for low stock alert
             if (newStock <= inventory.product.low_stock_threshold) {

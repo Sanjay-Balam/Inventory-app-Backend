@@ -4,7 +4,7 @@ import { requestLogger, errorLogger } from './middleware/requestLogger';
 import Logger from './utils/logger';
 import inventoryRouter from './routes/inventory';
 import orderRouter from './routes/orders';
-import barcodeRouter from './routes/barcode';
+import barcodeSimpleRouter from './routes/barcode-simple';
 import vendorRouter from './routes/vendor';
 import customerCreditRouter from './routes/customer-credit';
 import analyticsRouter from './routes/analytics';
@@ -48,7 +48,7 @@ app.use('/api/auth', authRouter);
 // Protected routes
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/orders', orderRouter);
-app.use('/api/barcode', barcodeRouter);
+app.use('/api/barcode', barcodeSimpleRouter);
 app.use('/api/vendors', vendorRouter);
 app.use('/api/customers', customerRouter);
 app.use('/api/customers/credit', customerCreditRouter);
